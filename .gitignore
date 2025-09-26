@@ -7,6 +7,12 @@
 .terraform/
 .terraform.lock.hcl
 terraform.tfvars
+terraform.tfplan
+
+# Helm temporary files
+Chart.lock
+charts/
+*.tgz
 
 # Kubernetes temporary files
 *.tmp
@@ -15,6 +21,12 @@ kubeconfig*
 # ArgoCD temporary files
 argocd-password.txt
 argocd-port-forward.pid
+
+# Monitoring stack temporary files
+grafana-port-forward.pid
+traefik-port-forward.pid
+prometheus-data/
+grafana-data/
 
 # IDE and OS files
 .vscode/
