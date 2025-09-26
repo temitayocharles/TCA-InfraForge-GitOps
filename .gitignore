@@ -1,0 +1,46 @@
+# TCA-InfraForge Git Configuration
+# Items to exclude from version control
+
+# Terraform state files
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+
+# Kubernetes temporary files
+*.tmp
+kubeconfig*
+
+# ArgoCD temporary files
+argocd-password.txt
+argocd-port-forward.pid
+
+# IDE and OS files
+.vscode/
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Environment files (if any contain secrets)
+.env
+.env.local
+
+# Build artifacts
+dist/
+build/
+target/
+
+# Node modules (if using any JS tooling)
+node_modules/
+npm-debug.log*
+
+# Python cache (if using any Python tooling)
+__pycache__/
+*.py[cod]
+*$py.class

@@ -1,0 +1,164 @@
+name: 🚀 TCA-InfraForge Development Platform
+on:
+  workflow_dispatch:
+    inputs:
+      platform_mode:
+        description: 'Platform Deployment Mode'
+        required: false
+        default: 'development'
+        type: choice
+        options:
+        - 'development'
+        - 'full-enterprise'
+        - 'demo-only'
+      duration_minutes:
+        description: 'Platform Duration (minutes, 0 = permanent)'
+        required: false
+        default: '120'
+        type: choice
+        options:
+        - '30'
+        - '60' 
+        - '120'
+        - '240'
+        - '0'
+  push:
+    branches: [main]
+    paths:
+    - 'argocd/**'
+    - 'k8s/**'
+    - 'terraform/**'
+
+env:
+  CLUSTER_NAME: tca-infraforge-demo
+  ARGOCD_VERSION: v2.8.4
+
+jobs:
+  deploy-demo:
+    name: 🎬 Deploy GitOps Demo
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    
+    steps:
+    - name: 📋 Checkout TCA-InfraForge
+      uses: actions/checkout@v4
+      
+    - name: 🔧 Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.5.0
+        
+    - name: ⚙️ Setup kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.28.0'
+        
+    - name: 🐳 Setup Docker
+      run: |
+        docker --version
+        docker info
+        
+    - name: 🏗️ Initialize TCA Infrastructure
+      working-directory: ./terraform
+      run: |
+        echo "🚀 Initializing TCA-InfraForge Infrastructure..."
+        terraform init
+        
+    - name: 📊 Plan Infrastructure
+      working-directory: ./terraform
+      run: |
+        echo "📋 Planning TCA-InfraForge deployment..."
+        terraform plan -var="cluster_name=${{ env.CLUSTER_NAME }}"
+        
+    - name: 🚀 Deploy Infrastructure
+      working-directory: ./terraform
+      run: |
+        echo "🎯 Deploying TCA-InfraForge demo cluster..."
+        terraform apply -auto-approve -var="cluster_name=${{ env.CLUSTER_NAME }}"
+        
+    - name: ⏳ Wait for Cluster Ready
+      run: |
+        echo "⏳ Waiting for cluster to be ready..."
+        kubectl wait --for=condition=Ready nodes --all --timeout=300s
+        kubectl get nodes -o wide
+        
+    - name: 📦 Verify ArgoCD Installation
+      run: |
+        echo "🔍 Verifying ArgoCD installation..."
+        kubectl get pods -n argocd
+        kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
+        
+    - name: 🔑 Get ArgoCD Access Info
+      id: argocd-info
+      run: |
+        echo "🔑 Getting ArgoCD access information..."
+        
+        # Get admin password
+        ARGOCD_PASSWORD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
+        echo "argocd_password=$ARGOCD_PASSWORD" >> $GITHUB_OUTPUT
+        
+        # Start port forwarding in background
+        kubectl port-forward svc/argocd-server -n argocd 8080:443 > /dev/null 2>&1 &
+        PORTFORWARD_PID=$!
+        echo "portforward_pid=$PORTFORWARD_PID" >> $GITHUB_OUTPUT
+        
+        sleep 10  # Wait for port forwarding to establish
+        
+    - name: 🎯 Deploy TCA Applications
+      run: |
+        echo "🎯 Deploying TCA-InfraForge sample applications..."
+        kubectl apply -f argocd/applications/
+        
+        # Wait for applications to sync
+        sleep 30
+        kubectl get applications -n argocd
+        
+    - name: 📊 Demo Summary
+      run: |
+        echo "
+        🎉 TCA-InfraForge Demo Successfully Deployed!
+        
+        📋 Cluster Information:
+        $(kubectl get nodes -o wide)
+        
+        🚀 ArgoCD Applications:
+        $(kubectl get applications -n argocd)
+        
+        🔗 Access Information:
+        - ArgoCD URL: https://localhost:8080
+        - Username: admin
+        - Password: ${{ steps.argocd-info.outputs.argocd_password }}
+        
+        ⏰ Platform will run for ${{ github.event.inputs.duration_minutes || '120' }} minutes
+        
+        👨‍💻 Built by: Temitayo Charles Akinniranye
+        🏗️ Project: TCA-InfraForge GitOps Portfolio
+        "
+        
+    - name: ⏱️ Keep Demo Running
+      run: |
+        DURATION_MINUTES=${{ github.event.inputs.duration_minutes || '120' }}
+        DURATION_SECONDS=$((DURATION_MINUTES * 60))
+        
+        echo "⏱️ Keeping demo alive for $DURATION_MINUTES minutes..."
+        echo "🌐 ArgoCD is accessible at https://localhost:8080"
+        echo "👀 Use this time to explore the GitOps workflow!"
+        
+        # Keep the demo running
+        sleep $DURATION_SECONDS
+        
+    - name: 🧹 Cleanup Demo Environment
+      if: always()
+      working-directory: ./terraform
+      run: |
+        echo "🧹 Cleaning up TCA-InfraForge demo environment..."
+        
+        # Kill port forwarding
+        if [ ! -z "${{ steps.argocd-info.outputs.portforward_pid }}" ]; then
+          kill ${{ steps.argocd-info.outputs.portforward_pid }} || true
+        fi
+        
+        # Destroy infrastructure
+        terraform destroy -auto-approve -var="cluster_name=${{ env.CLUSTER_NAME }}" || true
+        
+        echo "✅ TCA-InfraForge demo cleanup completed!"

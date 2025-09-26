@@ -1,0 +1,105 @@
+# TCA-InfraForge Metrics Server Application  
+# Author: Temitayo Charles Akinniranye
+# Purpose: Demonstrate GitOps deployment of metrics-server
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tca-metrics-server
+  namespace: argocd
+  labels:
+    tca.infraforge/app: metrics-server
+    tca.infraforge/project: gitops-demo
+    tca.infraforge/author: temitayo-charles-akinniranye
+  annotations:
+    tca.infraforge/description: "Kubernetes metrics server deployed via GitOps"
+    tca.infraforge/docs: "https://github.com/kubernetes-sigs/metrics-server"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: tca-infraforge-demo
+  
+  source:
+    repoURL: https://kubernetes-sigs.github.io/metrics-server/
+    chart: metrics-server
+    targetRevision: 3.12.1
+    helm:
+      releaseName: tca-metrics-server
+      values: |
+        # TCA-InfraForge metrics-server configuration
+        fullnameOverride: "tca-metrics-server"
+        
+        # Security settings for Kind cluster
+        args:
+          - --cert-dir=/tmp
+          - --secure-port=4443
+          - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+          - --kubelet-use-node-status-port
+          - --metric-resolution=15s
+          - --kubelet-insecure-tls  # Required for Kind
+          
+        # Resource settings optimized for demo
+        resources:
+          requests:
+            cpu: 100m
+            memory: 200Mi
+          limits:
+            cpu: 200m
+            memory: 400Mi
+            
+        # High availability for demo
+        replicas: 1
+        
+        # TCA branding labels
+        commonLabels:
+          tca.infraforge/component: metrics
+          tca.infraforge/managed-by: argocd
+          
+        # Monitoring integration
+        serviceMonitor:
+          enabled: true
+          labels:
+            tca.infraforge/monitoring: prometheus
+            
+        # Security context
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          seccompProfile:
+            type: RuntimeDefault
+          capabilities:
+            drop:
+            - ALL
+            
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+    
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+    - CreateNamespace=false  # kube-system already exists
+    - PrunePropagationPolicy=foreground
+    - PruneLast=true
+    - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+        
+  # Revision history
+  revisionHistoryLimit: 5
+  
+  # Health check configuration
+  ignoreDifferences:
+  - group: apps
+    kind: Deployment
+    jsonPointers:
+    - /spec/replicas

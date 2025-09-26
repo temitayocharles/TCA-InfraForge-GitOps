@@ -1,0 +1,121 @@
+# Microservice Application Template
+# Copy this to argocd/applications/dev-{your-name}/ and customize
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: CHANGEME-microservice-app  # Change to: {your-name}-{app-name}
+  namespace: argocd
+  labels:
+    tca.infraforge/developer: CHANGEME  # Your developer name
+    tca.infraforge/app-type: microservice
+  annotations:
+    tca.infraforge/description: "Your microservice description"
+spec:
+  project: CHANGEME-dev  # Change to: {your-name}-dev
+  
+  source:
+    # Option 1: Use Helm chart
+    repoURL: https://charts.bitnami.com/bitnami
+    chart: nginx  # Change to your preferred chart
+    targetRevision: 15.4.4
+    helm:
+      releaseName: CHANGEME-app  # Change to: {your-name}-{app-name}
+      values: |
+        # Customize your application here
+        fullnameOverride: "CHANGEME-microservice"
+        
+        # Required labels for platform integration
+        commonLabels:
+          tca.infraforge/developer: CHANGEME
+          tca.infraforge/app: CHANGEME-microservice
+          app.kubernetes.io/name: CHANGEME-microservice
+          
+        # Service configuration
+        service:
+          type: ClusterIP
+          ports:
+            http: 8080
+            metrics: 9090  # For Prometheus monitoring
+            
+        # Ingress for external access
+        ingress:
+          enabled: true
+          hostname: CHANGEME-app.tca-infraforge.dev
+          annotations:
+            kubernetes.io/ingress.class: nginx
+            cert-manager.io/cluster-issuer: letsencrypt-prod
+            # Enable rate limiting
+            nginx.ingress.kubernetes.io/rate-limit-connections: "10"
+            nginx.ingress.kubernetes.io/rate-limit-rps: "5"
+            
+        # Resource limits (important for shared environment)
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+            
+        # Security context (required)
+        podSecurityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+          fsGroup: 1001
+          
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          capabilities:
+            drop:
+            - ALL
+            
+        # Health checks
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 5
+          
+        # Enable service mesh integration
+        podAnnotations:
+          sidecar.istio.io/inject: "true"
+          
+        # Monitoring integration
+        metrics:
+          enabled: true
+          serviceMonitor:
+            enabled: true
+            labels:
+              tca.infraforge/developer: CHANGEME
+              
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: dev-CHANGEME  # Change to: dev-{your-name}
+    
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+    - CreateNamespace=false
+    - PrunePropagationPolicy=foreground
+    - PruneLast=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+        
+  # Keep revision history
+  revisionHistoryLimit: 5
