@@ -1,0 +1,37 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# TCA-InfraForge Grafana Extras (Pure Kustomize)
+metadata:
+  name: tca-grafana-extras
+  annotations:
+    tca.infraforge/component: grafana-configuration
+
+resources:
+  - dashboards-configmap.yaml
+  - grafana-ingress.yaml
+  - grafana-service-monitor.yaml
+
+# Generate ConfigMaps from files
+configMapGenerator:
+  - name: tca-custom-dashboards
+    files:
+      - dashboards/cluster-overview.json
+      - dashboards/application-metrics.json
+    options:
+      labels:
+        grafana_dashboard: "1"
+        tca.infraforge/component: dashboard
+
+# Generate secrets (if needed)
+secretGenerator:
+  - name: grafana-auth-secret
+    literals:
+      - admin-user=admin
+      - admin-password=tca-demo-password
+    type: Opaque
+
+# Common labels for all resources
+commonLabels:
+  tca.infraforge/component: grafana-extras
+  app.kubernetes.io/managed-by: kustomize

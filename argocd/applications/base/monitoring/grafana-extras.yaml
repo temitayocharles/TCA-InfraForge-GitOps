@@ -1,0 +1,27 @@
+# TCA-InfraForge Grafana Extras (Pure Kustomize)
+apiVersion: argoproj.io/v1alpha1  
+kind: Application
+metadata:
+  name: tca-grafana-extras
+  namespace: argocd
+  labels:
+    tca.infraforge/component: grafana-extras
+    tca.infraforge/layer: monitoring
+spec:
+  project: tca-infraforge-demo
+  
+  source:
+    repoURL: https://github.com/temitayocharles/TCA-InfraForge-GitOps.git
+    targetRevision: main
+    path: k8s/monitoring/grafana-extras
+    
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+    
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=false  # Created by prometheus-stack

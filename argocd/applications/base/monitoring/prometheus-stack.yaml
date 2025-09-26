@@ -1,0 +1,78 @@
+# TCA-InfraForge Prometheus Stack via Helm + Kustomize
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tca-prometheus-stack
+  namespace: argocd
+  labels:
+    tca.infraforge/component: prometheus
+    tca.infraforge/layer: monitoring
+spec:
+  project: tca-infraforge-demo
+  
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 51.0.0
+    helm:
+      releaseName: tca-prometheus
+      values: |
+        # TCA-InfraForge Prometheus Configuration
+        fullnameOverride: "tca-prometheus"
+        
+        # Prometheus configuration
+        prometheus:
+          prometheusSpec:
+            serviceMonitorSelectorNilUsesHelmValues: false
+            podMonitorSelectorNilUsesHelmValues: false
+            retention: 7d  # Keep 7 days of data for demo
+            resources:
+              requests:
+                cpu: 100m
+                memory: 512Mi
+              limits:
+                cpu: 500m
+                memory: 1Gi
+                
+        # Grafana configuration  
+        grafana:
+          enabled: true
+          adminPassword: tca-demo-password
+          service:
+            type: ClusterIP  # Will be exposed via Kustomize overlay
+          persistence:
+            enabled: false  # Ephemeral for demo
+          sidecar:
+            dashboards:
+              enabled: true
+              label: grafana_dashboard
+            datasources:
+              enabled: true
+              
+        # Alertmanager - disabled for simplicity
+        alertmanager:
+          enabled: false
+          
+        # Node exporter for host metrics
+        nodeExporter:
+          enabled: true
+          
+        # Kube state metrics for k8s object metrics  
+        kubeStateMetrics:
+          enabled: true
+          
+        # Common labels (enhanced by Kustomize)
+        commonLabels:
+          tca.infraforge/stack: monitoring
+          
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+    
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+    - ApplyOutOfSyncOnly=true

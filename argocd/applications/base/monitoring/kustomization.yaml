@@ -1,0 +1,27 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# TCA-InfraForge Base Monitoring Applications
+metadata:
+  name: tca-monitoring-base
+  annotations:
+    tca.infraforge/component: monitoring
+    tca.infraforge/managed-by: kustomize
+
+resources:
+  - prometheus-stack.yaml
+  - grafana-extras.yaml
+
+# Common labels for all monitoring resources
+commonLabels:
+  tca.infraforge/stack: monitoring
+  app.kubernetes.io/managed-by: argocd
+  app.kubernetes.io/part-of: tca-infraforge
+
+# Common annotations
+commonAnnotations:
+  tca.infraforge/project: gitops-demo
+  tca.infraforge/author: temitayo-charles-akinniranye
+
+# Namespace for all monitoring resources  
+namespace: monitoring

@@ -1,0 +1,72 @@
+# TCA-InfraForge Grafana Dashboard ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tca-platform-dashboards
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+    tca.infraforge/component: dashboard
+data:
+  platform-overview.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "🚀 TCA-InfraForge Platform Health",
+        "tags": ["tca-infraforge", "platform", "overview"],
+        "timezone": "browser",
+        "refresh": "30s",
+        "time": {"from": "now-1h", "to": "now"},
+        "panels": [
+          {
+            "id": 1,
+            "title": "Platform Services Status",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "up{job=~\".*tca.*\"}",
+                "legendFormat": "{{job}}"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "mappings": [
+                  {"options": {"0": {"text": "DOWN", "color": "red"}}, "type": "value"},
+                  {"options": {"1": {"text": "UP", "color": "green"}}, "type": "value"}
+                ]
+              }
+            },
+            "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0}
+          }
+        ]
+      }
+    }
+---
+apiVersion: v1
+kind: ConfigMap  
+metadata:
+  name: tca-application-dashboards
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1" 
+    tca.infraforge/component: dashboard
+data:
+  applications.json: |
+    {
+      "dashboard": {
+        "title": "🎯 TCA-InfraForge Applications",
+        "tags": ["tca-infraforge", "applications"],
+        "panels": [
+          {
+            "title": "ArgoCD Applications",
+            "type": "table",
+            "targets": [
+              {
+                "expr": "argocd_app_info",
+                "format": "table"
+              }
+            ]
+          }
+        ]
+      }
+    }

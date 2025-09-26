@@ -14,6 +14,15 @@ Chart.lock
 charts/
 *.tgz
 
+# Kustomize temporary files
+kustomization.yaml.bak
+kustomization.yml.bak
+*.orig
+# Kustomize build outputs (if you generate manifests locally)
+build/
+generated/
+rendered/
+
 # Kubernetes temporary files
 *.tmp
 kubeconfig*

@@ -1,0 +1,52 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# TCA-InfraForge Development Environment Overlay
+metadata:
+  name: tca-monitoring-dev
+  annotations:
+    tca.infraforge/environment: development
+
+# Reference base monitoring setup
+resources:
+  - ../../base/monitoring
+
+# Development-specific labels
+commonLabels:
+  tca.infraforge/environment: dev
+  tca.infraforge/cost-center: development
+
+# Development patches
+patches:
+  # Reduce Prometheus resources for dev
+  - patch: |-
+      - op: replace
+        path: /spec/source/helm/values
+        value: |
+          fullnameOverride: "tca-prometheus-dev"
+          prometheus:
+            prometheusSpec:
+              retention: 2d
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 256Mi
+                limits:
+                  cpu: 200m
+                  memory: 512Mi
+          grafana:
+            enabled: true
+            adminPassword: tca-dev-password
+            resources:
+              requests:
+                cpu: 50m
+                memory: 128Mi
+              limits:
+                cpu: 200m
+                memory: 256Mi
+    target:
+      kind: Application
+      name: tca-prometheus-stack
+
+# Development-specific name suffix
+nameSuffix: -dev
