@@ -114,7 +114,7 @@ resource "null_resource" "tca_argocd_install" {
 
 # Configure TCA ArgoCD projects and applications
 resource "null_resource" "tca_argocd_config" {
-  depends_on = [null_resource.tca_argocd_install]
+  depends_on = [null_resource.tca_argocd_install, null_resource.tca_traefik_install]
   
   provisioner "local-exec" {
     command = <<-EOT
