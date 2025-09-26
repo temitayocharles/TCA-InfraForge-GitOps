@@ -9,7 +9,32 @@
 - 📚 [I want to learn more!](#-learning-in-chunks)
 
 ### 🚀 **Ready to Start?**
-- ⚡ [Deploy in 1-click](#-1-click-deployment)
+- ⚡ [Deploy in 1-clic### **🆘 Still Stuck? (Emergency Contacts)**
+- 📝 **Create Issue:** [GitHub Issues](../../i## 🎯 Quick Actions (For When You're In a Hurry)
+
+### **⚡ 2-Minute Deploy (Permanent Cluster):**
+```bash
+# Option 1: Use the quick script (if you have GitHub CLI)
+./scripts/quick-deploy.sh 0 development
+
+# Option 2: Manual (via GitHub web interface)
+1. Click "Actions" tab
+2. Click "🚀 TCA-InfraForge Development Platform"
+3. Click "Run workflow" → Select "0" (permanent)
+4. Wait 10 minutes → Get demo URLs
+```
+
+### **🧹 1-Command Cleanup:**
+```bash
+# When you're done with your permanent cluster:
+./scripts/cleanup-cluster.sh
+
+# Or skip all prompts:
+./scripts/cleanup-cluster.sh --force
+```r details
+- 📊 **Check Status:** Look at ArgoCD/Grafana dashboards
+- 🔄 **Nuclear Option:** `./scripts/cleanup-cluster.sh --force` then re-deploy
+- 🧹 **Clean Slate:** Delete everything and start fresh with permanent cluster-1-click-deployment)
 - 👥 [Add team members](#-team-onboarding-2-minutes)
 - 🎨 [Create my app](#-deploy-first-app-5-minutes)
 - 📊 [See my dashboards](#-access-your-dashboards)
@@ -380,16 +405,20 @@ TCA-InfraForge/                           ← Production-grade development platf
 │   └── traffic-management/             ← Routing and load balancing
 └── 🔧 scripts/                          
     ├── setup-dev-environment.sh       ← Developer onboarding
+    ├── quick-deploy.sh                 ← Fast deployment via GitHub CLI
+    ├── cleanup-cluster.sh              ← Safe cluster cleanup
     ├── generate-certificates.sh       ← SSL certificate management
     └── backup-restore.sh              ← Data persistence
 ```
 
 ### 🎯 **Developer Quick Actions:**
-- **Create new environment** → `scripts/setup-dev-environment.sh {your-name}`
+- **Deploy platform** → `./scripts/quick-deploy.sh 0 development` (permanent cluster)
+- **Create new environment** → `./scripts/setup-dev-environment.sh {your-name}`
 - **Deploy application** → Add to `argocd/applications/dev-{your-name}/`
 - **Monitor services** → Access Grafana at `grafana.tca-infraforge.dev`
 - **Debug issues** → Check Jaeger traces at `jaeger.tca-infraforge.dev`
 - **View logs** → Kibana dashboard at `logs.tca-infraforge.dev`
+- **Cleanup cluster** → `./scripts/cleanup-cluster.sh` (when you're done)
 
 ---
 
@@ -550,9 +579,16 @@ graph TD
 ### **⚡ 2-Minute Demo Setup:**
 ```
 1. Click "Actions" tab
-2. Click "🚀 TCA-InfraForge ArgoCD Demo"
-3. Click "Run workflow" → Select 15 minutes
+2. Click "🚀 TCA-InfraForge Development Platform"
+3. Click "Run workflow" → Select "0" (permanent)
 4. Wait 10 minutes → Get demo URLs
+5. When done: ./scripts/cleanup-cluster.sh
+```
+
+### **🚀 Even Faster (if you have GitHub CLI):**
+```bash
+./scripts/quick-deploy.sh 0 development  # Permanent cluster
+./scripts/cleanup-cluster.sh              # Clean up when done
 ```
 
 ### **⚡ 5-Minute Code Changes:**
@@ -675,9 +711,9 @@ Self-Service Platform:
 **When you run the workflow, you choose:**
 - 🕐 **30 minutes** → Quick demos and testing
 - 🕑 **1 hour** → Development sessions  
-- 🕕 **2 hours** → Team collaboration (default)
+- 🕕 **2 hours** → Team collaboration 
 - 🕘 **4 hours** → Long development work
-- ♾️ **Permanent** → Choose "0" for always-on
+- ♾️ **Permanent** → Choose "0" for always-on (recommended!)
 
 ### 🔄 **What Happens When Time's Up?**
 ```
@@ -697,9 +733,18 @@ Time Expires → GitHub Actions auto-destroys cluster → Everything cleaned up
 
 ### 🎯 **Pro Tips:**
 - 💡 **For demos:** Use 30-60 minutes  
-- 💡 **For development:** Use 2-4 hours
-- 💡 **For permanent:** Choose "0" but remember to clean up manually
+- 💡 **For development:** Use permanent (0) + cleanup script when done
+- 💡 **For quick tests:** Use 1-2 hours
 - 💡 **GitHub Actions has unlimited minutes** for public repos! 🆓
+
+### 🧹 **Easy Cleanup:**
+```bash
+# When you're done with your permanent cluster:
+./scripts/cleanup-cluster.sh
+
+# Or force cleanup without prompts:
+./scripts/cleanup-cluster.sh --force
+```
 
 [⬆️ Back to Quick Help](#-quick-help-menu-click-what-you-need)
 
