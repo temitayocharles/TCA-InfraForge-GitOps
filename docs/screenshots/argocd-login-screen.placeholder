@@ -1,0 +1,20 @@
+# Screenshot Placeholder: ArgoCD Login Screen
+
+**File**: argocd-login-screen.png
+**Description**: ArgoCD login page with username and password fields
+**Content**: 
+- ArgoCD logo and branding
+- Username field with "admin" pre-filled
+- Password field (empty)
+- "Sign In" button
+- Clean, professional ArgoCD interface
+- URL bar showing the ArgoCD address
+
+**Annotations**:
+- Yellow highlight around username field showing "admin"
+- Red arrow pointing to password field with text: "Enter your generated password here"
+- Blue note: "Password is 32 characters from terraform output"
+
+**Resolution**: 1920x1080
+**Format**: PNG
+**File size target**: < 350KB

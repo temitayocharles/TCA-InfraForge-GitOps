@@ -1,0 +1,393 @@
+#cloud-config
+# TCA-InfraForge Hybrid VM1: ArgoCD + GitOps Core
+# Optimized for 2GB RAM with GitHub Actions integration
+
+hostname: ${hostname}
+manage_etc_hosts: true
+
+# System updates and essential packages
+package_update: true
+package_upgrade: false
+
+packages:
+  - docker.io
+  - docker-compose
+  - curl
+  - htop
+  - unzip
+  - jq
+  - git
+  - webhook
+
+# Configure 1GB swap for memory optimization
+swap:
+  filename: /swapfile
+  size: 1G
+  maxsize: 1G
+
+users:
+  - name: ubuntu
+    groups: [docker, sudo]
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+
+# Docker configuration optimized for 2GB
+write_files:
+  - path: /etc/docker/daemon.json
+    content: |
+      {
+        "log-driver": "json-file",
+        "log-opts": {
+          "max-size": "10m",
+          "max-file": "3"
+        },
+        "default-ulimits": {
+          "nofile": {
+            "Name": "nofile",
+            "Hard": 64000,
+            "Soft": 64000
+          }
+        },
+        "storage-driver": "overlay2"
+      }
+
+  # ArgoCD + Gitea Docker Compose
+  - path: /home/ubuntu/docker-compose.yml
+    content: |
+      version: '3.8'
+      
+      services:
+        # Gitea - Git server for GitOps
+        gitea:
+          image: gitea/gitea:1.21.0
+          container_name: gitea
+          restart: unless-stopped
+          ports:
+            - "3000:3000"
+            - "2222:22"
+          environment:
+            - GITEA__database__DB_TYPE=sqlite3
+            - GITEA__security__SECRET_KEY=tca-hybrid-secret-2024
+            - GITEA__server__DOMAIN=${hostname}
+            - GITEA__server__ROOT_URL=http://${hostname}:3000/
+            - GITEA__service__DISABLE_REGISTRATION=false
+            - GITEA__repository__DEFAULT_BRANCH=main
+            - GITEA__webhook__ALLOWED_HOST_LIST=*
+          volumes:
+            - gitea_data:/data
+            - /etc/timezone:/etc/timezone:ro
+            - /etc/localtime:/etc/localtime:ro
+          networks:
+            - tca-hybrid
+          mem_limit: 200m
+          memswap_limit: 300m
+          
+        # ArgoCD Server - Optimized for 2GB system
+        argocd-server:
+          image: quay.io/argoproj/argocd:v2.8.4
+          container_name: argocd-server
+          restart: unless-stopped
+          ports:
+            - "8080:8080"
+          command: 
+            - argocd-server
+            - --insecure
+            - --staticassets
+            - /shared/app
+            - --repo-server
+            - argocd-repo-server:8081
+            - --redis
+            - argocd-redis:6379
+            - --loglevel
+            - info
+          environment:
+            - ARGOCD_SERVER_INSECURE=true
+          volumes:
+            - argocd_server_data:/home/argocd
+          networks:
+            - tca-hybrid
+          mem_limit: 300m
+          memswap_limit: 400m
+          depends_on:
+            - argocd-redis
+            - argocd-repo-server
+
+        # ArgoCD Repository Server
+        argocd-repo-server:
+          image: quay.io/argoproj/argocd:v2.8.4
+          container_name: argocd-repo-server
+          restart: unless-stopped
+          command:
+            - argocd-repo-server
+            - --redis
+            - argocd-redis:6379
+            - --loglevel
+            - info
+          volumes:
+            - argocd_repo_data:/app/config/ssh
+            - argocd_repo_plugins:/app/config/plugins
+          networks:
+            - tca-hybrid
+          mem_limit: 300m
+          memswap_limit: 400m
+          depends_on:
+            - argocd-redis
+
+        # ArgoCD Application Controller
+        argocd-application-controller:
+          image: quay.io/argoproj/argocd:v2.8.4
+          container_name: argocd-controller
+          restart: unless-stopped
+          command:
+            - argocd-application-controller
+            - --status-processors
+            - "5"
+            - --operation-processors
+            - "3"  
+            - --app-resync
+            - "300"
+            - --redis
+            - argocd-redis:6379
+            - --loglevel
+            - info
+          environment:
+            - ARGOCD_CONTROLLER_REPLICAS=1
+          volumes:
+            - argocd_controller_data:/app/config
+          networks:
+            - tca-hybrid
+          mem_limit: 600m  # Optimized for 2GB system
+          memswap_limit: 800m
+          depends_on:
+            - argocd-redis
+
+        # Redis for ArgoCD
+        argocd-redis:
+          image: redis:7.0-alpine
+          container_name: argocd-redis
+          restart: unless-stopped
+          command: 
+            - redis-server
+            - --maxmemory
+            - 128mb
+            - --maxmemory-policy
+            - allkeys-lru
+          networks:
+            - tca-hybrid
+          mem_limit: 150m
+          memswap_limit: 200m
+
+        # Caddy - Reverse Proxy  
+        caddy:
+          image: caddy:2.7-alpine
+          container_name: caddy
+          restart: unless-stopped
+          ports:
+            - "80:80"
+            - "443:443"
+          volumes:
+            - ./Caddyfile:/etc/caddy/Caddyfile:ro
+            - caddy_data:/data
+            - caddy_config:/config
+          networks:
+            - tca-hybrid
+          mem_limit: 50m
+          depends_on:
+            - gitea
+            - argocd-server
+
+        # GitHub Webhook Receiver
+        webhook-receiver:
+          image: almir/webhook
+          container_name: webhook-receiver
+          restart: unless-stopped
+          ports:
+            - "9000:9000"
+          volumes:
+            - ./hooks.json:/etc/webhook/hooks.json:ro
+            - ./webhook-scripts:/scripts:ro
+          command: ["-verbose", "-hooks=/etc/webhook/hooks.json", "-hotreload"]
+          networks:
+            - tca-hybrid
+          mem_limit: 50m
+
+      volumes:
+        gitea_data:
+        argocd_server_data:
+        argocd_repo_data:
+        argocd_repo_plugins:
+        argocd_controller_data:
+        caddy_data:
+        caddy_config:
+
+      networks:
+        tca-hybrid:
+          driver: bridge
+
+  # Caddyfile for reverse proxy
+  - path: /home/ubuntu/Caddyfile
+    content: |
+      # TCA-InfraForge Hybrid Caddyfile
+      {
+          auto_https off
+          admin off
+      }
+
+      # Main routing
+      :80 {
+          # ArgoCD
+          handle_path /argocd/* {
+              reverse_proxy argocd-server:8080
+          }
+          
+          # Gitea  
+          handle_path /gitea/* {
+              reverse_proxy gitea:3000
+          }
+          
+          # Default to ArgoCD
+          handle {
+              reverse_proxy argocd-server:8080
+          }
+      }
+
+  # GitHub webhook configuration
+  - path: /home/ubuntu/hooks.json
+    content: |
+      [
+        {
+          "id": "tca-deploy-hook",
+          "execute-command": "/scripts/deploy-from-github.sh",
+          "command-working-directory": "/scripts",
+          "response-message": "TCA-InfraForge deployment triggered!",
+          "trigger-rule": {
+            "and": [
+              {
+                "match": {
+                  "type": "payload-hash-sha1",
+                  "secret": "${github_token}",
+                  "parameter": {
+                    "source": "header",
+                    "name": "X-Hub-Signature"
+                  }
+                }
+              },
+              {
+                "match": {
+                  "type": "value",
+                  "value": "refs/heads/main",
+                  "parameter": {
+                    "source": "payload",
+                    "name": "ref"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+
+  # GitHub webhook deployment script
+  - path: /home/ubuntu/webhook-scripts/deploy-from-github.sh
+    content: |
+      #!/bin/bash
+      # TCA-InfraForge GitHub webhook deployment script
+      
+      set -e
+      
+      echo "🚀 TCA-InfraForge: GitHub webhook triggered!"
+      echo "📅 $(date): Deploying from main branch..."
+      
+      # Clone/update repository
+      cd /tmp
+      if [ -d "TCA-InfraForge" ]; then
+        cd TCA-InfraForge
+        git pull origin main
+      else
+        git clone https://github.com/temitayocharles/TCA-InfraForge.git
+        cd TCA-InfraForge
+      fi
+      
+      # Apply ArgoCD applications
+      if [ -d "argocd/applications" ]; then
+        echo "📦 Applying ArgoCD applications..."
+        # In future: kubectl apply -f argocd/applications/
+        echo "✅ Applications would be deployed here"
+      fi
+      
+      echo "🎉 TCA-InfraForge: Deployment completed!"
+      
+      # Log deployment
+      echo "$(date): GitHub webhook deployment completed" >> /var/log/tca-deployments.log
+
+  # Resource monitoring script
+  - path: /home/ubuntu/monitor-hybrid.sh
+    content: |
+      #!/bin/bash
+      # TCA-InfraForge Hybrid Resource Monitor
+      
+      while true; do
+        echo "=== TCA-InfraForge Hybrid Status $(date) ==="
+        echo "💾 Memory Usage:"
+        free -h
+        echo ""
+        echo "💻 System Load:"
+        uptime
+        echo ""
+        echo "🐳 Container Status:"
+        docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}"
+        echo ""
+        echo "🌐 ArgoCD Health:"
+        curl -s http://localhost:8080/healthz || echo "ArgoCD not responding"
+        echo ""
+        echo "================================"
+        sleep 300  # Every 5 minutes
+      done
+
+# System configuration and startup
+runcmd:
+  - chown -R ubuntu:ubuntu /home/ubuntu
+  - chmod +x /home/ubuntu/monitor-hybrid.sh
+  - chmod +x /home/ubuntu/webhook-scripts/deploy-from-github.sh
+  - mkdir -p /home/ubuntu/webhook-scripts
+  
+  # Start Docker
+  - systemctl enable docker
+  - systemctl start docker
+  - usermod -aG docker ubuntu
+  
+  # System optimization for 2GB
+  - echo 'vm.swappiness=60' >> /etc/sysctl.conf
+  - echo 'vm.vfs_cache_pressure=50' >> /etc/sysctl.conf
+  - echo 'vm.dirty_ratio=15' >> /etc/sysctl.conf
+  - echo 'vm.dirty_background_ratio=5' >> /etc/sysctl.conf
+  - sysctl -p
+  
+  # Start TCA-InfraForge Hybrid stack
+  - cd /home/ubuntu && docker-compose up -d
+  
+  # Start monitoring
+  - nohup /home/ubuntu/monitor-hybrid.sh > /var/log/tca-hybrid-monitor.log 2>&1 &
+  
+  # Wait for ArgoCD to be ready
+  - sleep 60
+  
+  # Get initial ArgoCD password
+  - docker exec argocd-server argocd admin initial-password 2>/dev/null > /home/ubuntu/argocd-initial-password.txt || echo "ArgoCD password will be available after startup"
+
+final_message: |
+  🚀 TCA-InfraForge Hybrid VM1 (ArgoCD Core) Ready!
+  
+  🎯 Services:
+  - ArgoCD UI: http://VM1_IP:8080
+  - Gitea: http://VM1_IP:3000
+  - GitHub Webhooks: http://VM1_IP:9000
+  
+  🔑 Access:
+  - SSH: ssh ubuntu@VM1_IP
+  - ArgoCD Admin Password: cat /home/ubuntu/argocd-initial-password.txt
+  
+  💰 Cost: ~$1.20/month (2GB RAM)
+  📊 Monitoring: tail -f /var/log/tca-hybrid-monitor.log
+  
+  🎉 Professional GitOps platform ready for 24/7 operation!

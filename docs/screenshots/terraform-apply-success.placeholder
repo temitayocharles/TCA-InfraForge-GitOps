@@ -1,0 +1,24 @@
+# Screenshot Placeholder: Terraform Apply Success
+
+**File**: terraform-apply-success.png
+**Description**: Terminal showing successful terraform apply with outputs
+**Content**: 
+- Terminal window (dark theme preferred)
+- Command prompt showing: terraform apply -auto-approve
+- Terraform execution output showing:
+  - Resource creation progress
+  - "Apply complete! Resources: 15 added, 0 changed, 0 destroyed."
+  - Outputs section with:
+    - argocd_dashboard_url = "http://XXX.XXX.XXX.XXX:8080"
+    - tca_dashboard_url = "http://XXX.XXX.XXX.XXX/"
+    - security_status = "Enterprise mode enabled"
+- Terminal shows full command history
+
+**Annotations**:
+- Green highlight around "Apply complete!" message
+- Yellow highlight boxes around the output URLs
+- Text callout: "Copy these URLs to access your platform"
+
+**Resolution**: 1400x900 (terminal window)
+**Format**: PNG
+**File size target**: < 400KB

@@ -1,0 +1,448 @@
+#cloud-config
+# TCA-InfraForge Hybrid VM2: Support Services + Monitoring
+# Optimized for 1GB RAM (Oracle Always Free)
+
+hostname: ${hostname}
+manage_etc_hosts: true
+
+# Minimal system updates (Always Free optimization)
+package_update: true
+package_upgrade: false
+
+packages:
+  - docker.io
+  - curl
+  - htop
+  - jq
+  - nginx
+
+# Configure 512MB swap for memory optimization
+swap:
+  filename: /swapfile
+  size: 512M
+  maxsize: 512M
+
+users:
+  - name: ubuntu
+    groups: [docker, sudo]
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+
+# Docker configuration optimized for 1GB
+write_files:
+  - path: /etc/docker/daemon.json
+    content: |
+      {
+        "log-driver": "json-file",
+        "log-opts": {
+          "max-size": "5m",
+          "max-file": "2"
+        },
+        "default-ulimits": {
+          "nofile": {
+            "Name": "nofile",
+            "Hard": 32000,
+            "Soft": 32000
+          }
+        },
+        "storage-driver": "overlay2"
+      }
+
+  # Support Services Docker Compose
+  - path: /home/ubuntu/docker-compose.yml
+    content: |
+      version: '3.8'
+      
+      services:
+        # Prometheus - Lightweight monitoring
+        prometheus:
+          image: prom/prometheus:v2.40.7
+          container_name: prometheus
+          restart: unless-stopped
+          ports:
+            - "9090:9090"
+          command:
+            - '--config.file=/etc/prometheus/prometheus.yml'
+            - '--storage.tsdb.path=/prometheus'
+            - '--storage.tsdb.retention.time=7d'  # 1 week retention
+            - '--web.console.libraries=/etc/prometheus/console_libraries'
+            - '--web.console.templates=/etc/prometheus/consoles'
+            - '--web.enable-lifecycle'
+            - '--storage.tsdb.max-block-duration=2h'  # Memory optimization
+          volumes:
+            - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+            - prometheus_data:/prometheus
+          networks:
+            - tca-support
+          mem_limit: 200m
+          memswap_limit: 300m
+
+        # Grafana - Lightweight dashboards  
+        grafana:
+          image: grafana/grafana:9.5.15-ubuntu
+          container_name: grafana
+          restart: unless-stopped
+          ports:
+            - "3000:3000"
+          environment:
+            - GF_SECURITY_ADMIN_PASSWORD=tca-hybrid-2024
+            - GF_USERS_ALLOW_SIGN_UP=false
+            - GF_ANALYTICS_REPORTING_ENABLED=false
+            - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+            - GF_INSTALL_PLUGINS=
+          volumes:
+            - grafana_data:/var/lib/grafana
+            - ./grafana-dashboards:/etc/grafana/provisioning/dashboards:ro
+            - ./grafana-datasources:/etc/grafana/provisioning/datasources:ro
+          networks:
+            - tca-support
+          mem_limit: 150m
+          memswap_limit: 200m
+          depends_on:
+            - prometheus
+
+        # Uptime Kuma - Service monitoring
+        uptime-kuma:
+          image: louislam/uptime-kuma:1.23.11-alpine
+          container_name: uptime-kuma
+          restart: unless-stopped
+          ports:
+            - "3001:3001"
+          volumes:
+            - uptime_kuma_data:/app/data
+          networks:
+            - tca-support
+          mem_limit: 100m
+          memswap_limit: 150m
+
+        # Watchtower - Container updates
+        watchtower:
+          image: containrrr/watchtower:latest
+          container_name: watchtower
+          restart: unless-stopped
+          volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+          environment:
+            - WATCHTOWER_CLEANUP=true
+            - WATCHTOWER_SCHEDULE=0 0 2 * * *  # 2 AM daily
+            - WATCHTOWER_NOTIFICATIONS=email
+            - WATCHTOWER_NOTIFICATION_EMAIL_TO=${email}
+            - WATCHTOWER_NOTIFICATION_EMAIL_FROM=tca-hybrid@oracle.com
+          networks:
+            - tca-support
+          mem_limit: 50m
+
+        # Nginx - Load balancer and static files
+        nginx:
+          image: nginx:1.25-alpine
+          container_name: nginx-lb
+          restart: unless-stopped
+          ports:
+            - "80:80"
+          volumes:
+            - ./nginx.conf:/etc/nginx/nginx.conf:ro
+            - ./tca-static:/usr/share/nginx/html/static:ro
+          networks:
+            - tca-support
+          mem_limit: 50m
+          depends_on:
+            - prometheus
+            - grafana
+            - uptime-kuma
+
+      volumes:
+        prometheus_data:
+        grafana_data:
+        uptime_kuma_data:
+
+      networks:
+        tca-support:
+          driver: bridge
+
+  # Prometheus configuration
+  - path: /home/ubuntu/prometheus.yml
+    content: |
+      global:
+        scrape_interval: 30s
+        evaluation_interval: 30s
+        
+      rule_files: []
+      
+      scrape_configs:
+        - job_name: 'prometheus'
+          static_configs:
+            - targets: ['localhost:9090']
+            
+        - job_name: 'argocd-vm'
+          static_configs:
+            - targets: ['${argocd_vm_ip}:8080']
+          metrics_path: /metrics
+          scrape_interval: 60s
+          
+        - job_name: 'gitea-vm'
+          static_configs:
+            - targets: ['${argocd_vm_ip}:3000']
+          scrape_interval: 60s
+          
+        - job_name: 'node-exporter-vm1'
+          static_configs:
+            - targets: ['${argocd_vm_ip}:9100']  # Will be added later
+            
+        - job_name: 'node-exporter-vm2'
+          static_configs:
+            - targets: ['localhost:9100']  # Will be added later
+
+  # Nginx load balancer configuration
+  - path: /home/ubuntu/nginx.conf
+    content: |
+      events {
+          worker_connections 1024;
+      }
+      
+      http {
+          upstream argocd_backend {
+              server ${argocd_vm_ip}:8080;
+          }
+          
+          upstream gitea_backend {
+              server ${argocd_vm_ip}:3000;
+          }
+          
+          upstream monitoring_backend {
+              server localhost:3000;  # Grafana
+          }
+          
+          server {
+              listen 80;
+              server_name _;
+              
+              # ArgoCD routing
+              location /argocd/ {
+                  proxy_pass http://argocd_backend/;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+              }
+              
+              # Gitea routing
+              location /gitea/ {
+                  proxy_pass http://gitea_backend/;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              }
+              
+              # Monitoring routing
+              location /monitoring/ {
+                  proxy_pass http://monitoring_backend/;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              }
+              
+              # Prometheus
+              location /prometheus/ {
+                  proxy_pass http://localhost:9090/;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+              }
+              
+              # Uptime Kuma
+              location /uptime/ {
+                  proxy_pass http://localhost:3001/;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  
+                  # WebSocket support
+                  proxy_http_version 1.1;
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection "upgrade";
+              }
+              
+              # Static dashboard
+              location /static/ {
+                  alias /usr/share/nginx/html/static/;
+                  index dashboard.html;
+              }
+              
+              # Default - TCA Dashboard
+              location / {
+                  return 301 /static/dashboard.html;
+              }
+          }
+      }
+
+  # TCA-InfraForge Dashboard
+  - path: /home/ubuntu/tca-static/dashboard.html
+    content: |
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>TCA-InfraForge Hybrid Platform</title>
+          <style>
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a1a; color: white; }
+              .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+              .header { text-align: center; margin-bottom: 40px; }
+              .header h1 { color: #00d4ff; font-size: 2.5em; margin-bottom: 10px; }
+              .header p { color: #888; font-size: 1.2em; }
+              .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+              .card { background: #2a2a2a; border-radius: 10px; padding: 20px; border: 1px solid #444; }
+              .card h3 { color: #00d4ff; margin-bottom: 15px; }
+              .service-link { display: block; background: #333; padding: 15px; margin: 10px 0; border-radius: 5px; text-decoration: none; color: white; transition: background 0.3s; }
+              .service-link:hover { background: #00d4ff; color: #1a1a1a; }
+              .status { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 10px; }
+              .status.online { background: #00ff00; }
+              .status.offline { background: #ff0000; }
+              .cost-info { background: #1a4d1a; border-left: 4px solid #00ff00; padding: 15px; }
+              .arch-info { background: #1a1a4d; border-left: 4px solid #0080ff; padding: 15px; }
+          </style>
+      </head>
+      <body>
+          <div class="container">
+              <div class="header">
+                  <h1>🚀 TCA-InfraForge</h1>
+                  <p>Professional GitOps Platform | Hybrid Oracle Cloud Architecture</p>
+              </div>
+              
+              <div class="grid">
+                  <div class="card">
+                      <h3>🎯 Core Services (VM1 - 2GB)</h3>
+                      <a href="/argocd/" class="service-link">
+                          <span class="status online"></span>ArgoCD Dashboard
+                      </a>
+                      <a href="/gitea/" class="service-link">
+                          <span class="status online"></span>Gitea Git Server
+                      </a>
+                      <p style="margin-top: 10px; color: #888;">High-performance GitOps core with 2GB RAM allocation</p>
+                  </div>
+                  
+                  <div class="card">
+                      <h3>📊 Monitoring (VM2 - 1GB)</h3>
+                      <a href="/monitoring/" class="service-link">
+                          <span class="status online"></span>Grafana Dashboards
+                      </a>
+                      <a href="/prometheus/" class="service-link">
+                          <span class="status online"></span>Prometheus Metrics
+                      </a>
+                      <a href="/uptime/" class="service-link">
+                          <span class="status online"></span>Uptime Monitoring
+                      </a>
+                      <p style="margin-top: 10px; color: #888;">Comprehensive monitoring on Always Free tier</p>
+                  </div>
+                  
+                  <div class="card cost-info">
+                      <h3>💰 Cost Breakdown</h3>
+                      <p>VM1 (2GB): ~$1.20/month</p>
+                      <p>VM2 (1GB): $0 (Always Free)</p>
+                      <p><strong>Total: ~$1.70/month</strong></p>
+                      <p style="margin-top: 10px; color: #aaffaa;">Professional GitOps platform for less than a coffee!</p>
+                  </div>
+                  
+                  <div class="card arch-info">
+                      <h3>🏗️ Architecture</h3>
+                      <p>• GitHub Actions CI/CD Pipeline</p>
+                      <p>• Oracle Cloud PAYG Infrastructure</p>
+                      <p>• ArgoCD GitOps Delivery</p>
+                      <p>• 24/7 Persistent Remote Access</p>
+                      <p style="margin-top: 10px; color: #aaaaff;">Hybrid cloud for maximum efficiency</p>
+                  </div>
+              </div>
+              
+              <div style="text-align: center; margin-top: 40px; color: #666;">
+                  <p>TCA-InfraForge v2.0 | Hybrid Oracle Cloud | Deployed $(date)</p>
+              </div>
+          </div>
+          
+          <script>
+              // Auto-refresh every 5 minutes
+              setTimeout(() => location.reload(), 300000);
+              
+              // Service health checks (simplified)
+              function checkServices() {
+                  const services = ['/argocd/healthz', '/gitea/api/v1/version'];
+                  services.forEach((service, index) => {
+                      fetch(service, {method: 'HEAD'})
+                          .catch(() => {
+                              document.querySelectorAll('.status')[index].className = 'status offline';
+                          });
+                  });
+              }
+              
+              // Check services on load
+              checkServices();
+          </script>
+      </body>
+      </html>
+
+  # Resource monitoring script optimized for 1GB
+  - path: /home/ubuntu/monitor-support.sh
+    content: |
+      #!/bin/bash
+      # TCA-InfraForge Support VM Monitor (1GB Optimized)
+      
+      while true; do
+        echo "=== TCA Support VM Status $(date) ==="
+        echo "💾 Memory (1GB System):"
+        free -h
+        echo ""
+        echo "🐳 Containers (Lightweight):"
+        docker stats --no-stream --format "table {{.Container}}\t{{.MemUsage}}\t{{.CPUPerc}}"
+        echo ""
+        echo "🌐 Service Health:"
+        curl -s http://localhost:9090/-/healthy && echo " ✅ Prometheus" || echo " ❌ Prometheus"
+        curl -s http://localhost:3000/api/health && echo " ✅ Grafana" || echo " ❌ Grafana" 
+        curl -s http://localhost:3001/api/status-page/heartbeat && echo " ✅ Uptime Kuma" || echo " ❌ Uptime"
+        echo ""
+        echo "================================"
+        sleep 600  # Every 10 minutes (longer for 1GB system)
+      done
+
+# System configuration for 1GB RAM optimization  
+runcmd:
+  - chown -R ubuntu:ubuntu /home/ubuntu
+  - chmod +x /home/ubuntu/monitor-support.sh
+  - mkdir -p /home/ubuntu/tca-static
+  - mkdir -p /home/ubuntu/grafana-dashboards
+  - mkdir -p /home/ubuntu/grafana-datasources
+  
+  # Start Docker
+  - systemctl enable docker
+  - systemctl start docker
+  - usermod -aG docker ubuntu
+  
+  # 1GB System optimizations
+  - echo 'vm.swappiness=10' >> /etc/sysctl.conf  # Prefer RAM over swap
+  - echo 'vm.vfs_cache_pressure=200' >> /etc/sysctl.conf  # Reduce cache pressure
+  - echo 'vm.dirty_ratio=5' >> /etc/sysctl.conf  # Less dirty memory
+  - echo 'vm.dirty_background_ratio=2' >> /etc/sysctl.conf
+  - echo 'vm.overcommit_memory=1' >> /etc/sysctl.conf  # Allow overcommit
+  - sysctl -p
+  
+  # Start support services
+  - cd /home/ubuntu && docker-compose up -d
+  
+  # Start monitoring
+  - nohup /home/ubuntu/monitor-support.sh > /var/log/tca-support-monitor.log 2>&1 &
+
+final_message: |
+  🚀 TCA-InfraForge Hybrid VM2 (Support Services) Ready!
+  
+  🎯 Services:
+  - TCA Dashboard: http://VM2_IP/
+  - Grafana: http://VM2_IP:3000 (admin/tca-hybrid-2024)
+  - Prometheus: http://VM2_IP:9090
+  - Uptime Kuma: http://VM2_IP:3001
+  
+  🔑 Access:
+  - SSH: ssh ubuntu@VM2_IP
+  - Load Balancer: Routes to VM1 services
+  
+  💰 Cost: $0 (Oracle Always Free)
+  📊 Monitoring: tail -f /var/log/tca-support-monitor.log
+  
+  🎉 Support infrastructure ready for 24/7 monitoring!

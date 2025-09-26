@@ -1,0 +1,20 @@
+# Screenshot Placeholder: Oracle Cloud API Configuration
+
+**File**: oracle-cloud-api-config.png
+**Description**: API Key configuration popup with generated values
+**Content**: 
+- Modal popup window showing API key configuration
+- Generated configuration text in code block format
+- tenancy_ocid, user_ocid, fingerprint values (blurred for security)
+- "Copy" button highlighted
+- Professional Oracle Cloud modal design
+
+**Annotations**:
+- Yellow highlight box around entire configuration block
+- Red arrow pointing to "Copy" button
+- Text callout: "Copy this entire configuration"
+- Blue note: "Keep this window open!"
+
+**Resolution**: 1200x800 (modal dialog)
+**Format**: PNG
+**File size target**: < 300KB

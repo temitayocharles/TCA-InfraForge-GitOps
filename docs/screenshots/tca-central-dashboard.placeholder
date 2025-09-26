@@ -1,0 +1,24 @@
+# Screenshot Placeholder: TCA Central Dashboard
+
+**File**: tca-central-dashboard.png
+**Description**: TCA unified dashboard with service links and status
+**Content**: 
+- Professional TCA-InfraForge branding header
+- Service cards showing:
+  - ArgoCD Dashboard (with green status dot)
+  - Grafana Monitoring (with green status dot)  
+  - Prometheus Metrics (with green status dot)
+  - Uptime Monitoring (with green status dot)
+- Cost breakdown section showing $1.70/month
+- Architecture overview section
+- Professional dark theme design
+- Mobile-responsive layout
+
+**Annotations**:
+- Green status indicators next to each service
+- Text callout: "All services running and accessible"
+- Blue info box: "Your professional GitOps platform"
+
+**Resolution**: 1920x1080
+**Format**: PNG
+**File size target**: < 450KB

@@ -1,0 +1,101 @@
+# 📋 TCA-InfraForge Configuration Template
+# 🚀 Quick Setup: Copy this file to terraform.tfvars and fill in your values
+# 📚 Need Help? See: https://github.com/temitayocharles/TCA-InfraForge/blob/main/GETTING-STARTED.md
+
+# Oracle Cloud Account Configuration
+# Get these from Oracle Cloud Console > Identity > Users > Your User
+tenancy_ocid     = "ocid1.tenancy.oc1..aaaaaaaxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+user_ocid        = "ocid1.user.oc1..aaaaaaayyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+fingerprint      = "aa:bb:cc:dd:ee:ff:gg:hh:ii:jj:kk:ll:mm:nn:oo:pp"
+private_key_path = "/Users/yourusername/.oci/oci_api_key.pem"
+compartment_id   = "ocid1.compartment.oc1..aaaaaaazzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+region          = "us-ashburn-1"
+
+# SSH Key Configuration 
+# Generate with: ssh-keygen -t rsa -b 4096 -f ~/.ssh/tca_infrastructure
+ssh_public_key_path = "/Users/yourusername/.ssh/tca_infrastructure.pub"
+
+# GitHub Integration
+# Create token at: GitHub > Settings > Developer settings > Personal access tokens
+# Required scopes: repo, admin:repo_hook
+github_token = "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+github_repo  = "yourusername/TCA-InfraForge"
+
+# Contact Information
+email = "your-email@example.com"
+
+# Environment Configuration  
+environment = "production"
+project_name = "tca-infraforge"
+
+# VM Configuration (Cost Optimization)
+# VM1: ArgoCD (requires 2GB for stability) - ~$1.20/month
+argocd_vm_memory_gb = 2
+argocd_vm_ocpus     = 1
+
+# VM2: Support (Always Free - must stay ≤1GB) - $0/month
+support_vm_memory_gb = 1
+support_vm_ocpus     = 1
+
+# Network Configuration (optional overrides)
+# vcn_cidr           = "10.0.0.0/16"
+# public_subnet_cidr = "10.0.1.0/24"
+
+# ENTERPRISE SECURITY CONFIGURATION (MANDATORY FOR COLLEAGUES)
+security_mode = "enterprise"  # Options: development, production, enterprise
+enable_enterprise_security = true
+
+# ⚠️ CRITICAL: Admin IP Whitelist (MUST configure for colleagues)
+admin_ip_whitelist = [
+  "203.0.113.0/24",    # Your office network - CHANGE THIS
+  "198.51.100.5/32",   # Your home IP - CHANGE THIS  
+  # "192.168.1.0/24",  # Add colleague networks as needed
+]
+
+# SSL/TLS Security (recommended for production)
+enable_automatic_ssl = true
+domain_name = "infraforge.yourcompany.com"  # Optional: your domain
+ssl_email = "security@yourcompany.com"
+
+# Password Security (auto-generates 32-char passwords)
+auto_generate_passwords = true
+password_length = 32
+
+# Enterprise Features
+enable_bastion_host = true       # Secure SSH jump box
+enable_security_monitoring = true  # Security event alerts
+enable_audit_logging = true      # Comprehensive audit logs
+enable_encrypted_backups = true  # Encrypted backup storage
+
+# Service Configuration
+gitea_admin_user     = "admin"
+gitea_admin_email    = "admin@yourcompany.com"
+# Note: Passwords auto-generated when security_mode = "enterprise"
+
+# Optional: Disable Gitea if using GitHub-only workflow  
+enable_gitea = true  # Set to false to skip Gitea deployment and save resources
+
+# Optional: OIDC Authentication (for enterprise SSO)
+# enable_oidc_auth = true
+# oidc_issuer_url = "https://login.microsoftonline.com/YOUR-TENANT-ID/v2.0"
+# oidc_client_id = "your-azure-app-client-id"
+# oidc_client_secret = "your-azure-app-client-secret"
+
+# Monitoring & Maintenance
+enable_monitoring   = true
+enable_cost_tracking = true
+enable_backups      = true
+backup_retention_days = 7
+
+# Additional Tags (optional)
+additional_tags = {
+  "Owner"       = "YourName"
+  "Project"     = "TCA-InfraForge" 
+  "Environment" = "Production"
+  "Platform"    = "GitOps"
+  "CostCenter"  = "Infrastructure"
+}
+
+# Development Options (set to true for troubleshooting)
+# enable_debug_logging = false
+# create_bastion_host  = false

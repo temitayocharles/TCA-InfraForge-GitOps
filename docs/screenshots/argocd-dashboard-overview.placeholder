@@ -1,0 +1,20 @@
+# Screenshot Placeholder: ArgoCD Dashboard Overview
+
+**File**: argocd-dashboard-overview.png
+**Description**: Main ArgoCD dashboard showing applications overview
+**Content**: 
+- ArgoCD header with navigation menu
+- Applications list view (may be empty for new deployment)
+- "+ NEW APP" button prominently visible
+- Sidebar with Applications, Repositories, Clusters sections
+- Professional ArgoCD interface with TCA branding
+- Status indicators and sync status
+
+**Annotations**:
+- Red arrow pointing to "+ NEW APP" button
+- Text callout: "Click here to deploy your first application"
+- Blue info box: "This is your GitOps control center"
+
+**Resolution**: 1920x1080
+**Format**: PNG
+**File size target**: < 500KB
