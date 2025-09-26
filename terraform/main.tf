@@ -11,6 +11,14 @@ terraform {
       version = "~> 3.0"
     }
   }
+  
+  # For demo/development: local backend works perfectly
+  # For production: consider S3 backend with state locking
+  # backend "s3" {
+  #   bucket = "tca-infraforge-terraform-state"
+  #   key    = "demo/terraform.tfstate"
+  #   region = "us-west-2"
+  # }
 }
 
 variable "cluster_name" {
