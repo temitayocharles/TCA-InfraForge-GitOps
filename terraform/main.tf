@@ -48,9 +48,19 @@ resource "null_resource" "tca_kind_cluster" {
       fi
       
       # Create cluster with TCA branding
-      kind create cluster \
+      echo "🚀 Creating Kind cluster: ${var.cluster_name}..."
+      if ! kind create cluster \
         --name "${var.cluster_name}" \
-        --config ${path.module}/kind-config.yaml
+        --config ${path.module}/kind-config.yaml; then
+        echo "❌ Failed to create Kind cluster"
+        exit 1
+      fi
+      
+      # Verify cluster exists
+      if ! kind get clusters | grep -q "${var.cluster_name}"; then
+        echo "❌ Cluster ${var.cluster_name} not found after creation"
+        exit 1
+      fi
       
       # Set kubeconfig context
       kubectl config use-context "kind-${var.cluster_name}"
