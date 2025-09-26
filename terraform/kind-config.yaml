@@ -1,5 +1,5 @@
 # TCA-InfraForge Kind Cluster Configuration
-# Optimized for GitOps demonstration with non-conflicting ports
+# Optimized for GitOps demonstration - All access via Traefik
 
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
@@ -13,22 +13,13 @@ nodes:
       kubeletExtraArgs:
         node-labels: "tca.infraforge/node-role=control-plane,tca.infraforge/demo=true"
   
-  # Port mappings using uncommon ports to avoid conflicts
+  # Only expose Traefik ports - everything else goes through ingress
   extraPortMappings:
   - containerPort: 80
-    hostPort: 8000      # HTTP ingress
+    hostPort: 8070      # HTTP ingress via Traefik
     protocol: TCP
   - containerPort: 443  
-    hostPort: 8443      # HTTPS ingress
-    protocol: TCP
-  - containerPort: 30070
-    hostPort: 8070      # ArgoCD HTTP
-    protocol: TCP
-  - containerPort: 30080
-    hostPort: 9070      # Traefik Dashboard
-    protocol: TCP
-  - containerPort: 30090
-    hostPort: 3070      # Grafana
+    hostPort: 8470      # HTTPS ingress via Traefik
     protocol: TCP
 
 # Networking configuration for TCA demo

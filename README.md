@@ -778,12 +778,14 @@ git push
 
 **Done!** 🎉 Check ArgoCD to see your app deploying!
 
-### 📊 **Access Your Dashboards (Non-Conflicting Ports):**
-- 🎯 **ArgoCD:** `http://localhost:8070` → Deploy apps
-- 📊 **Grafana:** `http://localhost:3070` → Monitor performance (admin/tca-demo-password)
-- 🌐 **Traefik:** `http://localhost:9070` → Route traffic  
-- 🔍 **Jaeger:** `http://localhost:16670` → Trace requests
-- 🕸️ **Kiali:** `http://localhost:20001` → Service mesh topology
+### 📊 **Access Your Dashboards (All via Traefik Ingress):**
+- 🎯 **ArgoCD:** `http://localhost:8070/argocd` → Deploy apps
+- 📊 **Grafana:** `http://localhost:8070/grafana` → Monitor performance (admin/tca-demo-password)
+- 🌐 **Traefik:** `http://localhost:8070/dashboard` → Route traffic & ingress management
+- 🔍 **Jaeger:** `http://localhost:8070/jaeger` → Trace requests
+- 🕸️ **Kiali:** `http://localhost:8070/kiali` → Service mesh topology
+
+**✨ Everything accessed through one port (8070) with path-based routing via Traefik!**
 
 ---
 

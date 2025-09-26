@@ -109,10 +109,6 @@ resource "null_resource" "tca_argocd_install" {
       kubectl patch configmap argocd-cmd-params-cm -n argocd \
         --patch='{"data":{"server.insecure":"true"}}' || true
       
-      # Expose ArgoCD via NodePort
-      kubectl patch service argocd-server -n argocd \
-        --patch='{"spec":{"type":"NodePort","ports":[{"name":"http","port":80,"targetPort":8080,"nodePort":30070},{"name":"https","port":443,"targetPort":8080,"nodePort":30071}]}}' || true
-      
       # Restart ArgoCD server to pick up config
       kubectl rollout restart deployment/argocd-server -n argocd
       kubectl wait --for=condition=available --timeout=300s \
@@ -169,10 +165,10 @@ output "tca_access_instructions" {
     📋 Cluster: ${var.cluster_name}
     🎯 ArgoCD Version: ${var.argocd_version}
     
-    🔗 Access URLs (Non-conflicting ports):
-    - ArgoCD UI: http://localhost:8070
-    - Grafana: http://localhost:3070  
-    - Traefik Dashboard: http://localhost:9070
+    🌐 Access URLs (All via Traefik Ingress):
+    - ArgoCD UI: http://localhost:8070/argocd
+    - Grafana: http://localhost:8070/grafana  
+    - Traefik Dashboard: http://localhost:8070/dashboard
     
     🔑 Get ArgoCD Admin Password:
     kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
@@ -180,6 +176,8 @@ output "tca_access_instructions" {
     📊 Default Grafana Login:
     - Username: admin
     - Password: tca-demo-password
+    
+    🎯 All services accessed through Traefik on port 8070 with path-based routing!
     
     👨‍💻 Built by: Temitayo Charles Akinniranye
   EOT

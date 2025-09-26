@@ -119,12 +119,12 @@ jobs:
         🚀 ArgoCD Applications:
         $(kubectl get applications -n argocd)
         
-        🔗 Access Information:
-        - ArgoCD URL: http://localhost:8070
-        - Grafana URL: http://localhost:3070 (admin/tca-demo-password)
-        - Traefik Dashboard: http://localhost:9070
-        - Username: admin
-        - Password: ${{ steps.argocd-info.outputs.argocd_password }}
+        🔗 Access Information (All via Traefik Ingress):
+        - ArgoCD URL: http://localhost:8070/argocd
+        - Grafana URL: http://localhost:8070/grafana (admin/tca-demo-password)
+        - Traefik Dashboard: http://localhost:8070/dashboard
+        - ArgoCD Username: admin
+        - ArgoCD Password: ${{ steps.argocd-info.outputs.argocd_password }}
         
         ⏰ Platform will run for ${{ github.event.inputs.duration_minutes || '120' }} minutes
         
@@ -138,7 +138,7 @@ jobs:
         DURATION_SECONDS=$((DURATION_MINUTES * 60))
         
         echo "⏱️ Keeping demo alive for $DURATION_MINUTES minutes..."
-        echo "🌐 ArgoCD is accessible at http://localhost:8070"
+        echo "🌐 All services accessible via Traefik at http://localhost:8070/*"
         echo "👀 Use this time to explore the GitOps workflow!"
         
         # Keep the demo running

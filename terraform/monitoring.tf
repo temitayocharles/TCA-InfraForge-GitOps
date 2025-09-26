@@ -29,8 +29,7 @@ resource "null_resource" "tca_prometheus_install" {
         --set prometheus.prometheusSpec.podMonitorSelectorNilUsesHelmValues=false \
         --set grafana.enabled=true \
         --set grafana.adminPassword="tca-demo-password" \
-        --set grafana.service.type=NodePort \
-        --set grafana.service.nodePort=30090 \
+        --set grafana.service.type=ClusterIP \
         --set alertmanager.enabled=false \
         --set nodeExporter.enabled=true \
         --set kubeStateMetrics.enabled=true \
@@ -43,7 +42,7 @@ resource "null_resource" "tca_prometheus_install" {
         deployment/kube-prometheus-stack-grafana -n monitoring
       
       echo "✅ TCA-InfraForge: Monitoring stack installation completed!"
-      echo "📊 Grafana available at: http://localhost:3070"
+      echo "📊 Grafana available at: http://localhost:8070/grafana"
       echo "🔑 Username: admin, Password: tca-demo-password"
     EOT
   }

@@ -25,12 +25,10 @@ resource "null_resource" "tca_traefik_install" {
       helm upgrade --install traefik traefik/traefik \
         --namespace traefik \
         --set deployment.replicas=1 \
-        --set service.type=NodePort \
-        --set ports.web.port=8000 \
-        --set ports.web.nodePort=30080 \
-        --set ports.websecure.port=8443 \
+        --set service.type=LoadBalancer \
+        --set ports.web.port=80 \
+        --set ports.websecure.port=443 \
         --set ports.traefik.port=9000 \
-        --set ports.traefik.nodePort=30080 \
         --set ingressRoute.dashboard.enabled=true \
         --set providers.kubernetesCRD.enabled=true \
         --set providers.kubernetesIngress.enabled=true \
@@ -48,7 +46,7 @@ resource "null_resource" "tca_traefik_install" {
         deployment/traefik -n traefik
       
       echo "✅ TCA-InfraForge: Traefik installation completed!"
-      echo "🌐 Dashboard available at: http://localhost:9070"
+      echo "🌐 Dashboard available at: http://localhost:8070/dashboard"
     EOT
   }
   
@@ -65,25 +63,71 @@ resource "null_resource" "tca_traefik_routes" {
     command = <<-EOT
       echo "🌐 TCA-InfraForge: Setting up Traefik routes..."
       
-      # Create IngressRoute for ArgoCD
+      # Create IngressRoutes for all services
       cat <<YAML | kubectl apply -f -
+# ArgoCD IngressRoute
 apiVersion: traefik.containo.us/v1alpha1
 kind: IngressRoute
 metadata:
   name: argocd-server
   namespace: argocd
   labels:
-    tca.infraforge/component: traefik-route
+    tca.infraforge/component: ingress-route
 spec:
   entryPoints:
     - web
   routes:
-  - match: Host(\`argocd.tca-infraforge.dev\`)
+  - match: Host(\`localhost\`) && PathPrefix(\`/argocd\`)
     kind: Rule
     services:
     - name: argocd-server
       port: 80
+    middlewares:
+    - name: argocd-stripprefix
 ---
+# ArgoCD Middleware to strip /argocd prefix
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: argocd-stripprefix
+  namespace: argocd
+spec:
+  stripPrefix:
+    prefixes:
+      - /argocd
+---
+# Grafana IngressRoute
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: grafana
+  namespace: monitoring
+  labels:
+    tca.infraforge/component: ingress-route
+spec:
+  entryPoints:
+    - web
+  routes:
+  - match: Host(\`localhost\`) && PathPrefix(\`/grafana\`)
+    kind: Rule
+    services:
+    - name: kube-prometheus-stack-grafana
+      port: 80
+    middlewares:
+    - name: grafana-stripprefix
+---
+# Grafana Middleware
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: grafana-stripprefix
+  namespace: monitoring
+spec:
+  stripPrefix:
+    prefixes:
+      - /grafana
+---
+# Traefik Dashboard IngressRoute
 apiVersion: traefik.containo.us/v1alpha1  
 kind: IngressRoute
 metadata:
@@ -95,7 +139,7 @@ spec:
   entryPoints:
     - web
   routes:
-  - match: Host(\`traefik.tca-infraforge.dev\`)
+  - match: Host(\`localhost\`) && PathPrefix(\`/dashboard\`)
     kind: Rule
     services:
     - name: api@internal
