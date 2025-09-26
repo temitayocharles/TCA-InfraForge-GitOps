@@ -29,8 +29,8 @@ resource "null_resource" "tca_prometheus_install" {
         --set prometheus.prometheusSpec.podMonitorSelectorNilUsesHelmValues=false \
         --set grafana.enabled=true \
         --set grafana.adminPassword="tca-demo-password" \
-        --set grafana.service.type=LoadBalancer \
-        --set grafana.service.port=3000 \
+        --set grafana.service.type=NodePort \
+        --set grafana.service.nodePort=30090 \
         --set alertmanager.enabled=false \
         --set nodeExporter.enabled=true \
         --set kubeStateMetrics.enabled=true \
@@ -41,10 +41,6 @@ resource "null_resource" "tca_prometheus_install" {
       # Wait for Prometheus to be ready
       kubectl wait --for=condition=available --timeout=300s \
         deployment/kube-prometheus-stack-grafana -n monitoring
-        
-      # Port-forward Grafana for easy access  
-      kubectl port-forward -n monitoring service/kube-prometheus-stack-grafana 3070:80 > /dev/null 2>&1 &
-      echo $! > grafana-port-forward.pid
       
       echo "✅ TCA-InfraForge: Monitoring stack installation completed!"
       echo "📊 Grafana available at: http://localhost:3070"

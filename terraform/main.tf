@@ -55,6 +55,10 @@ resource "null_resource" "tca_kind_cluster" {
       # Set kubeconfig context
       kubectl config use-context "kind-${var.cluster_name}"
       
+      # Wait for cluster to be ready
+      echo "⏳ Waiting for cluster to be fully ready..."
+      kubectl wait --for=condition=Ready nodes --all --timeout=300s
+      
       echo "✅ TCA-InfraForge cluster '${var.cluster_name}' created successfully!"
     EOT
   }
@@ -104,6 +108,10 @@ resource "null_resource" "tca_argocd_install" {
       # Configure ArgoCD for demo
       kubectl patch configmap argocd-cmd-params-cm -n argocd \
         --patch='{"data":{"server.insecure":"true"}}' || true
+      
+      # Expose ArgoCD via NodePort
+      kubectl patch service argocd-server -n argocd \
+        --patch='{"spec":{"type":"NodePort","ports":[{"name":"http","port":80,"targetPort":8080,"nodePort":30070},{"name":"https","port":443,"targetPort":8080,"nodePort":30071}]}}' || true
       
       # Restart ArgoCD server to pick up config
       kubectl rollout restart deployment/argocd-server -n argocd

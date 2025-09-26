@@ -97,12 +97,7 @@ jobs:
         ARGOCD_PASSWORD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
         echo "argocd_password=$ARGOCD_PASSWORD" >> $GITHUB_OUTPUT
         
-        # Start port forwarding in background (using non-conflicting port)
-        kubectl port-forward svc/argocd-server -n argocd 8070:443 > /dev/null 2>&1 &
-        PORTFORWARD_PID=$!
-        echo "portforward_pid=$PORTFORWARD_PID" >> $GITHUB_OUTPUT
-        
-        sleep 10  # Wait for port forwarding to establish
+        echo "✅ ArgoCD accessible via NodePort - no port-forwarding needed"
         
     - name: 🎯 Deploy TCA Applications
       run: |
@@ -154,11 +149,6 @@ jobs:
       working-directory: ./terraform
       run: |
         echo "🧹 Cleaning up TCA-InfraForge demo environment..."
-        
-        # Kill port forwarding
-        if [ ! -z "${{ steps.argocd-info.outputs.portforward_pid }}" ]; then
-          kill ${{ steps.argocd-info.outputs.portforward_pid }} || true
-        fi
         
         # Destroy infrastructure
         terraform destroy -auto-approve -var="cluster_name=${{ env.CLUSTER_NAME }}" || true

@@ -25,10 +25,12 @@ resource "null_resource" "tca_traefik_install" {
       helm upgrade --install traefik traefik/traefik \
         --namespace traefik \
         --set deployment.replicas=1 \
-        --set service.type=LoadBalancer \
+        --set service.type=NodePort \
         --set ports.web.port=8000 \
+        --set ports.web.nodePort=30080 \
         --set ports.websecure.port=8443 \
         --set ports.traefik.port=9000 \
+        --set ports.traefik.nodePort=30080 \
         --set ingressRoute.dashboard.enabled=true \
         --set providers.kubernetesCRD.enabled=true \
         --set providers.kubernetesIngress.enabled=true \
@@ -44,10 +46,6 @@ resource "null_resource" "tca_traefik_install" {
       # Wait for Traefik to be ready
       kubectl wait --for=condition=available --timeout=300s \
         deployment/traefik -n traefik
-        
-      # Expose Traefik dashboard
-      kubectl port-forward -n traefik service/traefik 9070:9000 > /dev/null 2>&1 &
-      echo $! > traefik-port-forward.pid
       
       echo "✅ TCA-InfraForge: Traefik installation completed!"
       echo "🌐 Dashboard available at: http://localhost:9070"
