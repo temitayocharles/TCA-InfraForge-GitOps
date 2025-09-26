@@ -778,12 +778,12 @@ git push
 
 **Done!** 🎉 Check ArgoCD to see your app deploying!
 
-### 📊 **Access Your Dashboards:**
-- 🎯 **ArgoCD:** `https://argocd.tca-infraforge.dev` → Deploy apps
-- 📊 **Grafana:** `https://grafana.tca-infraforge.dev` → Monitor performance  
-- 🔍 **Jaeger:** `https://jaeger.tca-infraforge.dev` → Trace requests
-- 🌐 **Traefik:** `https://traefik.tca-infraforge.dev` → Route traffic
-- 🕸️ **Kiali:** `https://kiali.tca-infraforge.dev` → Service mesh topology
+### 📊 **Access Your Dashboards (Non-Conflicting Ports):**
+- 🎯 **ArgoCD:** `http://localhost:8070` → Deploy apps
+- 📊 **Grafana:** `http://localhost:3070` → Monitor performance (admin/tca-demo-password)
+- 🌐 **Traefik:** `http://localhost:9070` → Route traffic  
+- 🔍 **Jaeger:** `http://localhost:16670` → Trace requests
+- 🕸️ **Kiali:** `http://localhost:20001` → Service mesh topology
 
 ---
 

@@ -46,11 +46,11 @@ resource "null_resource" "tca_traefik_install" {
         deployment/traefik -n traefik
         
       # Expose Traefik dashboard
-      kubectl port-forward -n traefik service/traefik 9080:9000 > /dev/null 2>&1 &
+      kubectl port-forward -n traefik service/traefik 9070:9000 > /dev/null 2>&1 &
       echo $! > traefik-port-forward.pid
       
       echo "✅ TCA-InfraForge: Traefik installation completed!"
-      echo "🌐 Dashboard available at: http://localhost:9080"
+      echo "🌐 Dashboard available at: http://localhost:9070"
     EOT
   }
   

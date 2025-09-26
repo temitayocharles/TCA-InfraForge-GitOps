@@ -161,11 +161,17 @@ output "tca_access_instructions" {
     📋 Cluster: ${var.cluster_name}
     🎯 ArgoCD Version: ${var.argocd_version}
     
-    🔗 Access ArgoCD:
-    kubectl port-forward svc/argocd-server -n argocd 8080:443
+    🔗 Access URLs (Non-conflicting ports):
+    - ArgoCD UI: http://localhost:8070
+    - Grafana: http://localhost:3070  
+    - Traefik Dashboard: http://localhost:9070
     
-    🔑 Get Admin Password:
+    🔑 Get ArgoCD Admin Password:
     kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+    
+    📊 Default Grafana Login:
+    - Username: admin
+    - Password: tca-demo-password
     
     👨‍💻 Built by: Temitayo Charles Akinniranye
   EOT

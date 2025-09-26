@@ -42,12 +42,12 @@ resource "null_resource" "tca_prometheus_install" {
       kubectl wait --for=condition=available --timeout=300s \
         deployment/kube-prometheus-stack-grafana -n monitoring
         
-      # Port-forward Grafana for easy access
-      kubectl port-forward -n monitoring service/kube-prometheus-stack-grafana 3000:80 > /dev/null 2>&1 &
+      # Port-forward Grafana for easy access  
+      kubectl port-forward -n monitoring service/kube-prometheus-stack-grafana 3070:80 > /dev/null 2>&1 &
       echo $! > grafana-port-forward.pid
       
       echo "✅ TCA-InfraForge: Monitoring stack installation completed!"
-      echo "📊 Grafana available at: http://localhost:3000"
+      echo "📊 Grafana available at: http://localhost:3070"
       echo "🔑 Username: admin, Password: tca-demo-password"
     EOT
   }
