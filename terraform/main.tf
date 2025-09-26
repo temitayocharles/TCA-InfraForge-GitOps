@@ -63,7 +63,7 @@ resource "null_resource" "tca_kind_cluster" {
     when    = destroy
     command = <<-EOT
       echo "🧹 TCA-InfraForge: Destroying Kind cluster..."
-      kind delete cluster --name "${var.cluster_name}" || true
+      kind delete cluster --name "${self.triggers.cluster_name}" || true
       echo "✅ TCA-InfraForge cluster cleanup completed!"
     EOT
   }
