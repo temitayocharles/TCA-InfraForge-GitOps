@@ -22,12 +22,6 @@ on:
         - '120'
         - '240'
         - '0'
-  push:
-    branches: [main]
-    paths:
-    - 'argocd/**'
-    - 'k8s/**'
-    - 'terraform/**'
 
 env:
   CLUSTER_NAME: tca-infraforge-demo
